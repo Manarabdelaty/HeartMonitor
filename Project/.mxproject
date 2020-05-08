@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=F:/Epilogue/Project/Inc
+HeaderPath=F:/Epilogue/HeartMonitor/Project/Inc
 HeaderFiles=stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;
-SourcePath=F:/Epilogue/Project/Src
+SourcePath=F:/Epilogue/HeartMonitor/Project/Src
 SourceFiles=stm32f1xx_it.c;stm32f1xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]

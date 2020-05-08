@@ -59,6 +59,8 @@ int compute_bpm = 0;
 int collect_data = 0;
 
 int new_sample_rate = 1000;
+int new_counter_period = 8;
+const int counter_clk = 8000;
 int computed_bpm = 0;
 
 /* USER CODE END PV */
@@ -165,8 +167,8 @@ int main(void)
   {
 		if(set_sample_rate){
 			// change ARR value of TIM3
-			// check   __HAL_TIM_SET_PRESCALER
-			// check  __HAL_TIM_SET_COUNTER
+			new_counter_period = (float) counter_clk / (float)new_sample_rate; 
+			__HAL_TIM_SET_COUNTER(&htim3, new_counter_period);
 		}
 		if(collect_data){
 			// start TIM3 & TIM2 for one minute 			
@@ -287,7 +289,7 @@ static void MX_TIM2_Init(void)
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 8000;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 60000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -333,7 +335,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 8000;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 100;
+  htim3.Init.Period = 8;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)

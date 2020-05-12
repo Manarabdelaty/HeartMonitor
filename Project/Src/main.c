@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 /* USER CODE END Includes */
 
@@ -39,7 +40,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define MAX_UART 16
+#define COMMAND_LENGTH 5
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -80,14 +82,26 @@ static void MX_TIM2_Init(void);
 /* USER CODE BEGIN 0 */
 void decode(){
 	// fixed length commands
-	char command [5] = {rxBuffer[0], rxBuffer[1], rxBuffer[2], rxBuffer[3], '\0'};
-	if(strcmp(command, "rate") == 0){
+	char command [COMMAND_LENGTH+1] = {rxBuffer[0],
+	rxBuffer[1], rxBuffer[2], rxBuffer[3], rxBuffer[4], '\0'};
+	if(strcmp(command, "rate=") == 0){
 		// set new sample rate
+		char sample_rate_str [MAX_UART];
+		for (int i= COMMAND_LENGTH; i<MAX_UART; i++){
+				if(rxBuffer[i] != ';')
+					sample_rate_str[i-COMMAND_LENGTH] = rxBuffer[i];
+				else
+				{
+					sample_rate_str[i-COMMAND_LENGTH] = '\0';
+					break;
+				}					
+		}
 		set_sample_rate = 1;
-	} else if (strcmp(command, "hbpm") == 0){
+		new_sample_rate = atoi(sample_rate_str);
+	} else if (strcmp(command, "hbpm;") == 0){
 		// compute heart beats
 		compute_bpm = 1;
-	} else if (strcmp(command, "data") == 0){
+	} else if (strcmp(command, "data;") == 0){
 		// collect one minute of data
 		collect_data = 1;
 	}
@@ -100,13 +114,13 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		adc_value = HAL_ADC_GetValue(&hadc1);
 		char value[16];
 	  sprintf(value, "%d\n\r", adc_value);
-		//HAL_UART_Transmit(&huart1, (uint8_t *)value, strlen(value), 10);
+		HAL_UART_Transmit(&huart1, (uint8_t *)value, strlen(value), 10);
 	}
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart){
 	if(huart->Instance == USART1){
-			decode();
-			HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 16);
+			decode();  // first decode instruction
+			HAL_UART_Receive_IT(&huart1,(uint8_t *)rxBuffer, 16);
 	}
 }
 int timer_done = 0;
@@ -116,8 +130,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * 	htim){
 		reset = reset + 1;
 		if(__HAL_TIM_GET_FLAG(&htim2, TIM_FLAG_CC1) != RESET){
 			timer_done = timer_done + 1;
-			HAL_TIM_Base_Stop(&htim3);
-			HAL_TIM_Base_Stop_IT(&htim2);
+			HAL_TIM_Base_Stop(&htim3);      // stop ADC trigger timer
+			HAL_TIM_Base_Stop_IT(&htim2);  // stop one minute timer
 		}
 	}
 }
@@ -158,7 +172,10 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 	HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 16);
+
+	//HAL_TIM_Base_Start(&htim3);
 	HAL_ADC_Start_IT(&hadc1);
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -168,13 +185,21 @@ int main(void)
 		if(set_sample_rate){
 			// change ARR value of TIM3
 			new_counter_period = (float) counter_clk / (float)new_sample_rate; 
-			__HAL_TIM_SET_COUNTER(&htim3, new_counter_period);
+			__HAL_TIM_SET_AUTORELOAD(&htim3, new_counter_period);
+			
+			__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE);
+			set_sample_rate = 0;
+			__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+
 		}
 		if(collect_data){
 			// start TIM3 & TIM2 for one minute 			
 			HAL_TIM_Base_Start(&htim3);
 			HAL_TIM_Base_Start_IT(&htim2);
+			
+			__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE);
 			collect_data = 0;
+			__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
 		}
     /* USER CODE END WHILE */
 

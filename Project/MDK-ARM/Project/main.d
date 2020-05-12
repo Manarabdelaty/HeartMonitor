@@ -30,4 +30,5 @@ project\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 project\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 project\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
 project\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+project\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 project\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

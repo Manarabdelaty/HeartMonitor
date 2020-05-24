@@ -28,3 +28,22 @@ python tkApp.py
 ```
 
 To run/flash the embedded application, you can use microvision Keil IDE. 
+
+# Documentation
+
+The emebedded application is implemented using Round Robin with Interrupts archietecure.
+
+The application is composed of three main interrupts with the following callback functions: 
+
+1) UART Receive Interrupt `HAL_UART_RxCpltCallback`
+
+This callback function is called whenever a UART receive interrupt is generated. The uart interrupt is generated whenever it receives 16-bytes.
+
+2) ADC Conversion Complete Interrupt `HAL_ADC_ConvCpltCallback`
+
+This callback function is called whenver the ADC succesfuly completes the conversion of one ADC sample.
+
+3) Timer Period Elapsed Interrupt `HAL_TIM_PeriodElapsedCallback`
+
+This callback function is called whenver TIM2 period has elapsed (whenever one minute has passed).
+

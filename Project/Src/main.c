@@ -54,6 +54,7 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 uint32_t adc_value;
+char value[16];
 char rxBuffer[16];
 
 int set_sample_rate = 0;
@@ -61,10 +62,11 @@ int compute_bpm = 0;
 int collect_data = 0;
 
 int new_sample_rate = 1000;
-int new_counter_period = 8;
-const int counter_clk = 8000;
+int new_counter_period = 2;
+const int counter_clk = 2000;
 int computed_bpm = 0;
 
+int sample_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -112,9 +114,9 @@ void decode(){
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	if(hadc->Instance == ADC1){
 		adc_value = HAL_ADC_GetValue(&hadc1);
-		char value[16];
-	  sprintf(value, "%d\n\r", adc_value);
+	  sprintf(value, "%d,%d\n\r", adc_value, sample_count);
 		HAL_UART_Transmit(&huart1, (uint8_t *)value, strlen(value), 10);
+		sample_count++;
 	}
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart){
@@ -184,7 +186,7 @@ int main(void)
   {
 		if(set_sample_rate){
 			// change ARR value of TIM3
-			new_counter_period = (float) counter_clk / (float)new_sample_rate; 
+			new_counter_period = ((float) counter_clk / (float)new_sample_rate) - 1; 
 			__HAL_TIM_SET_AUTORELOAD(&htim3, new_counter_period);
 			
 			__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE);
@@ -358,9 +360,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 8000;
+  htim3.Init.Prescaler = 3999;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 8;
+  htim3.Init.Period = 2;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)

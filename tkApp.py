@@ -175,8 +175,9 @@ class DataPage(tk.Frame):
         value = port.read()
         print(f"Received {value}")
         if value:
+            value = value.split(',')
             x = next(self.index)
-            y = int(value)
+            y = int(value[0]) #int(value)
             return x, y 
         else:
             return 0, 0

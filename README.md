@@ -31,8 +31,18 @@ To run/flash the embedded application, you can use microvision Keil IDE.
 
 # Documentation
 
+The python application communicates with microcontroller over UART via three commands. 
+
+1) `rate={new_rate};`  : this command sets a new sample rate for the STM32 internal ADC
+2) `data;`             : this command starts the data collection for one minute
+3) `hbpm;`             : this command computes the heart beats per minute. 
+
 The emebedded application is implemented using Round Robin with Interrupts archietecure. The main loop continuously polls over the following three flags to check which command is received: 
-- `set_sample_rate` : if raised, a new sample rate is set to the ADC. This done by computing a new value for TIM3 ARR register using the following equation: `ARR = ((float) sysclk / (pre-scaler + 1) / (float)new_sample_rate) - 1; ` The new timer period is set using `__HAL_TIM_SET_AUTORELOAD` function. 
+- `set_sample_rate` : if raised, a new sample rate is set to the ADC. This done by computing a new value for TIM3 ARR register using the following equation: 
+```
+ARR = ((float) sysclk / (pre-scaler + 1) / (float)new_sample_rate) - 1;
+``` 
+The new timer period is set using `__HAL_TIM_SET_AUTORELOAD` function. 
 
 - `collect_data`: if raised, the data collection is started; ADC starts conversion for one minute. This is done by starting TIM3 (sample rate timer) using `HAL_TIM_Base_Start` and TIM2 (one minute timer) using `HAL_TIM_Base_Start_IT` which starts the timer in the interrupt mode to generate an interuupt when TIM2 period elapses i.e when one minute passes. Inside the callback of TIM2 elapsed period, the two timers are stopped marking the end of the data collection. 
 

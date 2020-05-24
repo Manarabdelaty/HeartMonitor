@@ -1,9 +1,8 @@
 # HeartSensor
 
-This is a heart monitor embedded application. The block diagram is shown below. 
+This is a heart monitor embedded application. The block diagram is shown below. The AD8232 sensor collects electrical signals from the three electrodes placed on the right hand, left hand, and right leg. The sensor then amplifies this signal which is sampled and digitized by the STM32 internal ADC. Two general purpose timers are utilized for this application. The first one is for controlling the ADC sample rate and the second one for counting for one minute duration to mark the start and the end of the data collection process. One UART module is also utilized to facilitate serial communication between the STM32 and the PC application. The USB-UART is used as a bridge to be able to provide usb connectivity to the PC with UART interface. 
 
-![PPT](https://user-images.githubusercontent.com/25064257/82758441-df24ef00-9de6-11ea-93c3-1b6ef8e685f2.png)
-
+<img src="https://user-images.githubusercontent.com/25064257/82758441-df24ef00-9de6-11ea-93c3-1b6ef8e685f2.png" width="800" height="400" />
 
 
 # Hardware

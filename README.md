@@ -1,5 +1,11 @@
 # HeartSensor
 
+This is a heart monitor embedded application. The block diagram is shown below. 
+
+![PPT](https://user-images.githubusercontent.com/25064257/82758441-df24ef00-9de6-11ea-93c3-1b6ef8e685f2.png)
+
+
+
 # Hardware
 
 The application utlizies the following hardware components:

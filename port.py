@@ -60,7 +60,7 @@ class Port:
             line = self.ser.readline()
             line = line.decode("utf-8") 
             line = line.replace("\n", "").replace("\r", "")
-            print(f"Received {line}")
+            #print(f"Received {line}")
         else:
             print("Are you sure you choosing a right port ? ")
             

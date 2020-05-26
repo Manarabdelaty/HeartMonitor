@@ -42,6 +42,11 @@
 /* USER CODE BEGIN PM */
 #define MAX_UART 16
 #define COMMAND_LENGTH 5
+#define ADC_BUFFER_SIZE 32
+#define PEAK_THRESHOLD 750
+#define MIN_RR_INTERVAL 0.6
+#define MIN_SAMPLES_RR 32
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -66,7 +71,18 @@ int new_counter_period = 2;
 const int counter_clk = 2000;
 int computed_bpm = 0;
 
+int detect_peak = 0;
+int transmit_adc = 0;
+
 int sample_count = 0;
+
+uint32_t adc_values [32];
+int seeker = 0, count = 0;
+float prev_peak = 0, curr_peak = 0;
+int num_peaks = 0;
+float peak_distance = 0;
+
+int transmit_bpm = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -111,11 +127,39 @@ void decode(){
 		// Invalid command
 	}
 }
+char bpm[24];
+void countPeaks(){
+	if((adc_values[count-1] > adc_values[count-2]) &&
+		(adc_values[count-1] > adc_values[count])){    // if the previous point is a local maximamum; compare it to its neighbors
+			if(adc_values[count-1] > PEAK_THRESHOLD ){  // if the previous point is above the specified threshold
+						curr_peak = __HAL_TIM_GET_COUNTER(&htim2) / 1000.0; // get current time for the one minute timer
+						peak_distance = curr_peak - prev_peak;              // Compute RR-Interval
+						if(peak_distance > MIN_RR_INTERVAL){                // if the RR-Interval is above the minimum RR-Interval; a sort of debouncing/LPF
+								num_peaks++;                                    // count it as a peak
+								if (num_peaks >= 2) {                           
+									computed_bpm = 300.0 / (peak_distance / 0.2);         // 300-method for calculating bpm
+									transmit_bpm = 1;
+									sprintf(bpm, "%d\n\r", computed_bpm);
+									HAL_UART_Transmit(&huart1, (uint8_t *)bpm, strlen(bpm), 10);
+								}
+								prev_peak = curr_peak;
+						}	
+			}
+		}
+}
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	if(hadc->Instance == ADC1){
 		adc_value = HAL_ADC_GetValue(&hadc1);
-	  sprintf(value, "%d,%d\n\r", adc_value, sample_count);
-		HAL_UART_Transmit(&huart1, (uint8_t *)value, strlen(value), 10);
+		if (transmit_adc){
+			sprintf(value, "%d\n\r", adc_value);
+			HAL_UART_Transmit(&huart1, (uint8_t *)value, strlen(value), 10);
+		}else if(detect_peak){ // buffer received signal
+				adc_values[count] = adc_value;
+				if(count <= 2) {
+					countPeaks();
+				}
+				count = (count + 1) % MIN_SAMPLES_RR;
+		}
 		sample_count++;
 	}
 }
@@ -125,15 +169,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart){
 			HAL_UART_Receive_IT(&huart1,(uint8_t *)rxBuffer, 16);
 	}
 }
-int timer_done = 0;
-int reset = 0;
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * 	htim){
 	if(htim->Instance == TIM2){
-		reset = reset + 1;
 		if(__HAL_TIM_GET_FLAG(&htim2, TIM_FLAG_CC1) != RESET){
-			timer_done = timer_done + 1;
 			HAL_TIM_Base_Stop(&htim3);      // stop ADC trigger timer
 			HAL_TIM_Base_Stop_IT(&htim2);  // stop one minute timer
+			transmit_adc = 0;
+			detect_peak = 0;
 		}
 	}
 }
@@ -175,13 +218,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 16);
 
-	//HAL_TIM_Base_Start(&htim3);
 	HAL_ADC_Start_IT(&hadc1);
 	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	int index = 0;
   while (1)
   {
 		if(set_sample_rate){
@@ -194,8 +237,12 @@ int main(void)
 			__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
 
 		}
+		
 		if(collect_data){
-			// start TIM3 & TIM2 for one minute 			
+			// start TIM3 & TIM2 for one minute 
+			sample_count = 0;
+			transmit_adc = 1;
+			
 			HAL_TIM_Base_Start(&htim3);
 			HAL_TIM_Base_Start_IT(&htim2);
 			
@@ -203,6 +250,20 @@ int main(void)
 			collect_data = 0;
 			__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
 		}
+		
+		if (compute_bpm) {
+			// start adc sample rate timer; it is stopped after detecting at least one peak
+			detect_peak = 1; 
+			
+			HAL_TIM_Base_Start(&htim3);
+			HAL_TIM_Base_Start_IT(&htim2);
+			
+			__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE);
+			compute_bpm = 0;
+			__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+			
+		}
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -13,17 +13,17 @@ import matplotlib.animation as animation
 from matplotlib import style
 
 import tkinter as tk
-from tkinter import ttk
 from PIL import Image, ImageTk
 import sys
 sys.path.append('F:/Epilogue/HeartMonitor/')
 from port import Port
 from itertools import count
-import random
 
 style.use("ggplot")
 
 port = Port()
+
+waitForbpm = False
 
 def change(default):
     print("Selected port: ", default.get())
@@ -48,10 +48,19 @@ def setBtnClick(port, entry):
         print("Feild is empty!!")
 
 
-def bpmBtnClick(port):
+def bpmBtnClick(port, rate):
     command = "hbpm;"
+    received= False;
+    global waitForbpm
     try:
         port.write(command)
+        waitForbpm = False
+        while not received:
+            line = port.read()
+            if line: 
+                print(f"bpm: {line} ")
+                received = True
+                rate['text'] = f"{line} bpm"
     except:
         print("failed to write to port... you sure it is opened ? ")
         
@@ -104,42 +113,53 @@ class StartPage(tk.Frame):
         img.image = render
         img.pack(anchor="n",side=tk.TOP, expand=True)
         
+        frame1 = tk.Frame(master=self, width=200, height=100, bg="gray95")
+        frame1.pack(fill=tk.BOTH, side=tk.TOP, expand=True)
+
         # dropdown menu
         options, desc = port.getAllPorts()
 
         default = tk.StringVar(parent)
         default.set(options[0])
         default.trace("w", lambda x,y,z: change(default))
-        dropDownMenu = tk.OptionMenu(self, default, *options)
-        dropDownMenu.configure(width=70, height=2)
-        dropDownMenu.pack(anchor="nw", side=tk.LEFT, expand=True)
+        dropDownMenu = tk.OptionMenu(frame1, default, *options)
+        dropDownMenu.configure(width=50, height=2)
+        dropDownMenu.pack(anchor="n", side=tk.LEFT, expand=True)
         
         # select button
-        portButton = tk.Button(self, width=30, height=2, text="Select", fg="red",
+        portButton = tk.Button(frame1, width=20, height=2, text="Select", fg="red",
                                command= lambda: selectBtnClick(port, default))
-        portButton.pack(anchor="ne",side=tk.RIGHT, expand=True)
-        #portButton.grid(row=1, column=2, columnspan=2)
+        portButton.pack(anchor="n",side=tk.RIGHT, expand=True)
+        
+        frame2 = tk.Frame(master=self, width=100, height=100, bg="gray95")
+        frame2.pack(fill=tk.BOTH, side=tk.TOP, expand=True)
         
         # sample rate
-        label = tk.Label(self, text="Sample rate SPS")
-        entry = tk.Entry(self, fg="yellow", bg="red", width=50)
-        label.pack(side=tk.LEFT, expand=True)
+        label = tk.Label(frame2, text="Sample rate SPS")
+        entry = tk.Entry(frame2, fg="yellow", bg="red", width=50)
+        label.pack(side=tk.TOP, expand=True)
         entry.pack(side=tk.LEFT, expand=True)
 
         # set button
-        rateButton = tk.Button(self, width=20, height=2, text="Set", fg="red", command=lambda: setBtnClick(port, entry))
-        rateButton.pack(side=tk.RIGHT, expand=True)
+        rateButton = tk.Button(frame2, width=20, height=2, text="Set", fg="red", command=lambda: setBtnClick(port, entry))
+        rateButton.pack(side=tk.RIGHT, expand=True)       
         
+        frame3 = tk.Frame(master=self, width=50,height=400, bg="gray95")
+        frame3.pack(fill=tk.BOTH, side=tk.TOP, expand=True)
         # bpm button
-        #bpmButton = tk.Button(self, width=20, height=2, text="BPM", fg="red", command=bpmBtnClick)
-        #bpmButton.pack(anchor="s",side=tk.TOP, expand=True)
+        rate = tk.Label(frame3, text="?? bpm", fg="red")
+        rate.pack(side=tk.TOP, expand=True)
+        
+        bpmButton = tk.Button(frame3, width=20, height=2, text="BPM", fg="red", command=lambda: bpmBtnClick(port, rate))
+        bpmButton.pack(side=tk.TOP, expand=True)
+        
+      
+        
+        frame4 = tk.Frame(master=self, width=50,height=500, bg="gray95")
+        frame4.pack(fill=tk.BOTH, side=tk.TOP, expand=True)
 
-        #rate = tk.Label(self, text="?? bpm", fg="red")
-        #rate.pack(anchor="s",side=tk.TOP, expand=True)
-
-
-        dataButton = tk.Button(self, width=20, text="Collect Data >>", fg="red", command=lambda:[controller.show_frame(DataPage), dataBtnClick(port)])
-        dataButton.pack(anchor="s", side=tk.TOP, expand=True)
+        dataButton = tk.Button(frame4, width=20, text="Collect Data >>", fg="red", command=lambda:[controller.show_frame(DataPage), dataBtnClick(port)])
+        dataButton.pack(anchor="s", side=tk.BOTTOM, expand=True)
        
         tk.Frame.pack(self,fill=tk.BOTH, side=tk.TOP, expand=True)
 
@@ -173,11 +193,11 @@ class DataPage(tk.Frame):
                 
     def readECG(self): 
         value = port.read()
-        print(f"Received {value}")
+        #print(f"Received {value}")
         if value:
-            value = value.split(',')
+            #value = value.split(',')
             x = next(self.index)
-            y = int(value[0]) #int(value)
+            y = int(value) #int(value)
             return x, y 
         else:
             return 0, 0
@@ -186,11 +206,13 @@ class DataPage(tk.Frame):
         x, y = self.readECG()
         self.x_vals.append(x)
         self.y_vals.append(y)
-        self.x_vals = self.x_vals[-50:]
-        self.y_vals = self.y_vals[-50:]
-        self.a.clear()
-        self.a.plot(self.x_vals, self.y_vals)
-        self.a.set_title("ECG Signal")
+        self.x_vals = self.x_vals[-500:]
+        self.y_vals = self.y_vals[-500:]
+        
+        if self.x_vals[-1] % 10 == 0:
+            self.a.clear()
+            self.a.plot(self.x_vals, self.y_vals)
+            self.a.set_title("ECG Signal")
     
     def start(self):
         self.ani = animation.FuncAnimation(self.f, self.animate, interval=1, repeat=False)

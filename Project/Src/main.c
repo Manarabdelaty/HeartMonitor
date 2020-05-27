@@ -43,7 +43,7 @@
 #define MAX_UART 16
 #define COMMAND_LENGTH 5
 #define ADC_BUFFER_SIZE 32
-#define PEAK_THRESHOLD 750
+#define PEAK_THRESHOLD 2000
 #define MIN_RR_INTERVAL 0.6
 #define MIN_SAMPLES_RR 32
 
@@ -137,9 +137,9 @@ void countPeaks(){
 						if(peak_distance > MIN_RR_INTERVAL){                // if the RR-Interval is above the minimum RR-Interval; a sort of debouncing/LPF
 								num_peaks++;                                    // count it as a peak
 								if (num_peaks >= 2) {                           
-									computed_bpm = 300.0 / (peak_distance / 0.2);         // 300-method for calculating bpm
+									computed_bpm = 60.0 / (peak_distance);         // 300-method for calculating bpm
 									transmit_bpm = 1;
-									sprintf(bpm, "%d\n\r", computed_bpm);
+									sprintf(bpm, "bpm: %d\n\r", computed_bpm);
 									HAL_UART_Transmit(&huart1, (uint8_t *)bpm, strlen(bpm), 10);
 								}
 								prev_peak = curr_peak;
@@ -150,10 +150,10 @@ void countPeaks(){
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	if(hadc->Instance == ADC1){
 		adc_value = HAL_ADC_GetValue(&hadc1);
-		if (transmit_adc){
+		if (transmit_adc){ // if data command triggered ADC
 			sprintf(value, "%d\n\r", adc_value);
 			HAL_UART_Transmit(&huart1, (uint8_t *)value, strlen(value), 10);
-		}else if(detect_peak){ // buffer received signal
+		}else if(detect_peak){ // if hbpm command triggered ADC
 				adc_values[count] = adc_value;
 				if(count <= 2) {
 					countPeaks();
@@ -175,8 +175,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * 	htim){
 		if(__HAL_TIM_GET_FLAG(&htim2, TIM_FLAG_CC1) != RESET){
 			HAL_TIM_Base_Stop(&htim3);      // stop ADC trigger timer
 			HAL_TIM_Base_Stop_IT(&htim2);  // stop one minute timer
-			transmit_adc = 0;
-			detect_peak = 0;
 		}
 	}
 }
@@ -239,10 +237,9 @@ int main(void)
 		}
 		
 		if(collect_data){
-			// start TIM3 & TIM2 for one minute 
 			sample_count = 0;
 			transmit_adc = 1;
-			
+		  // start TIM3 & TIM2 for one minute 
 			HAL_TIM_Base_Start(&htim3);
 			HAL_TIM_Base_Start_IT(&htim2);
 			
@@ -254,6 +251,11 @@ int main(void)
 		if (compute_bpm) {
 			// start adc sample rate timer; it is stopped after detecting at least one peak
 			detect_peak = 1; 
+			computed_bpm = 0;
+			curr_peak = 0;
+			prev_peak = 0;
+			peak_distance = 0;
+			num_peaks = 0;
 			
 			HAL_TIM_Base_Start(&htim3);
 			HAL_TIM_Base_Start_IT(&htim2);
@@ -265,7 +267,6 @@ int main(void)
 		}
 		
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

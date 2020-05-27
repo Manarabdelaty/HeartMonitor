@@ -52,17 +52,20 @@ def bpmBtnClick(port, rate):
     command = "hbpm;"
     received= False;
     global waitForbpm
-    try:
-        port.write(command)
-        waitForbpm = False
-        while not received:
-            line = port.read()
-            if line: 
+
+#    try:
+    port.write(command)
+    waitForbpm = False
+    while not received:
+        line = port.read()
+
+        if line:
+            if line[0] == 'b' and line[1] == 'p' and line[2] == 'm': 
                 print(f"bpm: {line} ")
                 received = True
-                rate['text'] = f"{line} bpm"
-    except:
-        print("failed to write to port... you sure it is opened ? ")
+                rate['text'] = f"{line}"
+#    except:
+#        print("failed to write to port... you sure it is opened ? ")
         
 def dataBtnClick(port):
     command = "data;"
@@ -170,8 +173,10 @@ class DataPage(tk.Frame):
         self.y_vals = []
         self.index = count()
         self.f = Figure(figsize=(6,5), dpi=100)
+
         self.a = self.f.add_subplot(111)
-        self.a.plot([1,2,3], [1,2,3])
+        self.a.set_ylim(2000, 3000)
+        #self.a.plot([1,2,3], [1,2,3])
         
         tk.Frame.__init__(self, parent)
         label = tk.Label(self, text="ECG Signal")
@@ -206,15 +211,15 @@ class DataPage(tk.Frame):
         x, y = self.readECG()
         self.x_vals.append(x)
         self.y_vals.append(y)
-        self.x_vals = self.x_vals[-500:]
-        self.y_vals = self.y_vals[-500:]
-        
-        if self.x_vals[-1] % 10 == 0:
-            self.a.clear()
-            self.a.plot(self.x_vals, self.y_vals)
-            self.a.set_title("ECG Signal")
+        self.x_vals = self.x_vals[-150:]
+        self.y_vals = self.y_vals[-150:]
+        self.a.clear()
+        #self.a.set_ylim(3800, 4000)
+        self.a.plot(self.x_vals, self.y_vals)
+        self.a.set_title("ECG Signal")
     
     def start(self):
+        port.flush()
         self.ani = animation.FuncAnimation(self.f, self.animate, interval=1, repeat=False)
         self.running = True
         self.ani._start()
@@ -227,6 +232,7 @@ class DataPage(tk.Frame):
         self.index = count()
         self.x_vals = []
         self.y_vals = []
+        port.flush()
         print("Stopped animation..")
 
         

@@ -71,3 +71,6 @@ class Port:
         print(data.encode())
         self.ser.write(data.encode())
         print("Data is written")
+        
+    def flush(self):
+        self.ser.reset_input_buffer()
